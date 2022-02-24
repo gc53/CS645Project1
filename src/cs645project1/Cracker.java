@@ -2,16 +2,27 @@
 package cs645project1;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
-public class Cracker {
+public class Cracker extends Thread{
 
     static String PWD_DIR = "common-passwords.txt";
     static String SHADOW_DIR = "shadow";
+    private static final ExecutorService workers = Executors.newCachedThreadPool();
     
-    
-    public static HashMap makePreCalcTbl( ArrayList<String> pwd_list, ArrayList<Shadow> shadow ){
+    private static HashMap makePreCalcTbl( ArrayList<String> pwd_list, ArrayList<Shadow> shadow ){
         
         HashMap pre_calc_tbl = new HashMap();
         
