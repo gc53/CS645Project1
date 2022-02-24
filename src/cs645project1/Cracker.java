@@ -21,6 +21,10 @@ public class Cracker {
             // Iterate through list of common passwords
             for( String pwd : pwd_list ){
                 
+                if( pwd.length() > 16){
+                    continue;
+                }
+                //System.out.println( MD5Shadow.crypt( pwd, user.getSalt() ) + " : " + user.getUsername() + ":" + pwd );
                 // Get hash of salt and password and use the resulting hash
                 // as the key for the corresponding user and password in hash map
                 pre_calc_tbl.put( 
@@ -32,6 +36,91 @@ public class Cracker {
         }
         
         return pre_calc_tbl;
+    }
+    
+    private static String getPwd( ArrayList<String> pwd_list, Shadow user ){
+        
+        HashMap pre_calc_tbl = new HashMap();
+        
+        // Iterate through list of common passwords
+        for( String pwd : pwd_list ){
+                
+            // MD5Shadow.crypt() does not appear to work with passwords longer than 16 characters.
+            if( pwd.length() > 16){
+                continue;
+            }
+            //System.out.println( MD5Shadow.crypt( pwd, user.getSalt() ) + " : " + user.getUsername() + ":" + pwd );
+            // Get hash of salt and password and use the resulting hash
+            // as the key for the corresponding user and password in hash map
+            pre_calc_tbl.put( 
+                    MD5Shadow.crypt( pwd, user.getSalt() ), //Salt & Password Hash
+                    user.getUsername() + ":" + pwd          //Username & Password
+            );
+                
+            }
+
+        if( pre_calc_tbl.containsKey( user.getHash() ) ){
+                    
+                // Print username and password corresponding to 
+                // hash from shadow file
+                return (String) pre_calc_tbl.get( user.getHash() );
+                    
+            }
+        else{
+            return null;
+        }
+    }
+    
+    private static String getPwdMT( ArrayList<String> pwd_list, Shadow user ) throws InterruptedException, ExecutionException{
+        
+        HashMap pre_calc_tbl = new HashMap();
+        
+        Collection<Callable<String[]>> tasks = new ArrayList<>();
+
+        // Iterate through list of common passwords
+        for( String pwd : pwd_list ){
+                
+            // MD5Shadow.crypt() does not appear to work with passwords longer than 16 characters.
+            if( pwd.length() > 16){
+                continue;
+            }
+            
+
+            tasks.add(new Callable<String[]>()
+            {
+
+            public String[] call()
+                  throws Exception
+            {
+                String[] out = new String[2];
+                out[0] = MD5Shadow.crypt( pwd, user.getSalt() );
+                out[1] = user.getUsername() + ":" + pwd;
+                return out;
+            }
+
+            });
+        }
+            
+                
+        List<Future<String[]>> results = workers.invokeAll(tasks/*, 120, TimeUnit.SECONDS*/);
+        for (Future<String[]> f : results) {
+            String[] str = f.get();
+            pre_calc_tbl.put( 
+                    str[0], //Salt & Password Hash
+                    str[1]  //Username & Password
+            );
+        }    
+
+        if( pre_calc_tbl.containsKey( user.getHash() ) ){
+                    
+                // Print username and password corresponding to 
+                // hash from shadow file
+                return (String) pre_calc_tbl.get( user.getHash() );
+                    
+            }
+        else{
+            return null;
+        }
     }
     
     public static void main(String[] args) {
@@ -46,22 +135,30 @@ public class Cracker {
         
 
         // Make pre-calculated hash table
-        HashMap pre_calc_tbl = makePreCalcTbl( pwd_list, shadow );
+        //HashMap pre_calc_tbl = makePreCalcTbl( pwd_list, shadow );
             
         // Iterate through list of users in shadow file
         for( Shadow user : shadow ){
-                
-            // Check if shadow file hash exists in pre-calculated table
-            if( pre_calc_tbl.containsKey( user.getHash() ) ){
-                    
-                // Print username and password corresponding to 
-                // hash from shadow file
-                System.out.println( pre_calc_tbl.get( user.getHash() ) );
-                    
-            }
             
+            
+            //String out = getPwd( pwd_list, user );
+            String out = null;
+
+            try {
+                out = getPwdMT( pwd_list, user );
+
+            } catch (CancellationException | InterruptedException | ExecutionException ex) {
+                Logger.getLogger(Cracker.class.getName()).log(Level.SEVERE, null, ex);
             }
 
+            System.out.println( out == null ? 
+                                user.getUsername() + ": Password not found" : 
+                                out );
+
+            
+        }
+        
+        workers.shutdown();
         
     }
     
