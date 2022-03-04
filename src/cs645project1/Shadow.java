@@ -1,7 +1,12 @@
+/*
+CS645 Project1
+
+Gene Chen
+Kefin Sajan
+Minhazul Abedin
+*/
 
 package cs645project1;
-
-import java.util.ArrayList;
 
 public class Shadow {
     
@@ -50,6 +55,10 @@ public class Shadow {
     
     public String getHash(){
         return hash;
+    }
+    
+    public String toString(){
+        return username + ":" + salt + ":" + hash;
     }
     
 }

@@ -1,3 +1,10 @@
+/*
+CS645 Project1
+
+Gene Chen
+Kefin Sajan
+Minhazul Abedin
+*/
 
 package cs645project1;
 
@@ -14,14 +21,14 @@ public class SimpleCracker {
     static String SHADOW_DIR = "shadow-simple";
     
     
-    public static String toHex(byte[] bytes)
+    private static String toHex(byte[] bytes)
     {
         BigInteger bi = new BigInteger(1, bytes);
         return String.format("%0" + (bytes.length << 1) + "X", bi);
     }
 
     
-    public static HashMap makePreCalcTbl( ArrayList<String> pwd_list, ArrayList<Shadow> shadow ) throws NoSuchAlgorithmException{
+    private static HashMap makePreCalcTbl( ArrayList<String> pwd_list, ArrayList<Shadow> shadow ) throws NoSuchAlgorithmException{
         
         HashMap pre_calc_tbl = new HashMap();
         MessageDigest md = MessageDigest.getInstance("MD5");

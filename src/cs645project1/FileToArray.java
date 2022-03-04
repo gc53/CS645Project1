@@ -1,43 +1,51 @@
+/*
+CS645 Project1
+
+Gene Chen
+Kefin Sajan
+Minhazul Abedin
+*/
 
 package cs645project1;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public class FileToArray {
-    
-    public static ArrayList<String> toStringArray(String filePath)
+
+    public static ArrayList<String> toStringArray(String ... filePaths)
     {
  
-        ArrayList<String> builder = new ArrayList<>();
+        // LinkedHashSet is used to prevent duplicate strings from being added
+        Set<String> builder = new LinkedHashSet<>();
  
-        // try block to check for exceptions where
-        // object of BufferedReader class us created
-        // to read filepath
-        try (BufferedReader buffer = new BufferedReader(
+        // Iterate through file paths
+        for( String filePath : filePaths ){
+        
+            try (BufferedReader buffer = new BufferedReader(
                  new java.io.FileReader(filePath))) {
  
-            String str;
+                String str;
  
-            // Condition check via buffer.readLine() method
-            // holding true upto that the while loop runs
-            while ((str = buffer.readLine()) != null) {
+                // Condition check via buffer.readLine() method
+                // holding true upto that the while loop runs
+                while ((str = buffer.readLine()) != null) {
  
-                builder.add(str);
+                    builder.add(str);
+                }
+            }
+ 
+            // Catch block to handle the exceptions
+            catch (IOException e) {
+                e.printStackTrace();
             }
         }
  
-        // Catch block to handle the exceptions
-        catch (IOException e) {
- 
-            // Print the line number here exception occured
-            // using printStackTrace() method
-            e.printStackTrace();
-        }
- 
-        // Return ArrayList of strings
-        return builder;
+        // Return ArrayList of common passwords with no duplicates
+        return new ArrayList<>( builder );
     }
     
     public static ArrayList<Shadow> toSimpleShadowArray( String filepath ){

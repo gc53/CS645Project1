@@ -1,6 +1,13 @@
+/*
+CS645 Project1
 
+Gene Chen
+Kefin Sajan
+Minhazul Abedin
+*/
 package cs645project1;
 
+import java.util.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,10 +29,19 @@ public class Cracker extends Thread{
     static int TASK_SIZE = 1000;
     private static final ExecutorService workers = 
             Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() );
-            //Executors.newCachedThreadPool();
+            //Executors.newCachedThreadPool();  //Aggressive threading scheme. Not recommended or optimal.
     
     // Deprecated original single threaded function that calculates hash for all users
     private static HashMap makePreCalcTbl( ArrayList<String> pwd_list, ArrayList<Shadow> shadow ){
+        
+        // Catch null inputs
+        if( pwd_list == null || shadow == null ){
+            throw new NullPointerException( 
+                    pwd_list == null ? "pwd_list" : "" + 
+                    pwd_list == null && shadow == null? " & " : "" + 
+                    shadow == null ? "shadow" : "" + 
+                    " arg is null.");
+        }
         
         HashMap pre_calc_tbl = new HashMap();
         
@@ -55,6 +71,15 @@ public class Cracker extends Thread{
     // Deprecated revised single threaded function that calcuates hashes for a single user
     // to find their password
     private static String getPwd( ArrayList<String> pwd_list, Shadow user ){
+        
+        // Catch null inputs
+        if( pwd_list == null || user == null ){
+            throw new NullPointerException( 
+                    pwd_list == null ? "pwd_list" : "" + 
+                    pwd_list == null && user == null? " & " : "" + 
+                    user == null ? "user" : "" + 
+                    " arg is null.");
+        }
         
         HashMap pre_calc_tbl = new HashMap();
         
@@ -92,6 +117,16 @@ public class Cracker extends Thread{
     private static String getPwdMT( ArrayList<String> pwd_list, Shadow user ) 
             throws InterruptedException, ExecutionException{
         
+        // Catch null inputs
+        if( pwd_list == null || user == null ){
+            throw new NullPointerException( 
+                    pwd_list == null ? "pwd_list" : "" + 
+                    pwd_list == null && user == null ? " & " : "" + 
+                    user == null ? "user" : "" + 
+                    " arg is null.");
+        }
+        
+        // Initialize list of tasks
         List<Callable<String[]>> tasks = new ArrayList<>();
 
         // Iterate through list of common passwords
@@ -100,37 +135,36 @@ public class Cracker extends Thread{
             // Add task to calculate and return hash of password & salt along
             // with corresponding password to list of tasks to be run
             tasks.add(
-                    new Callable<String[]>()
+                new Callable<String[]>()
+                {
+                    public String[] call() throws Exception
                     {
-                        public String[] call() throws Exception
-                        {
-                            String[] out = new String[2];
-                            
-                            // Store password that will be calculated to hash.
-                            // Truncate passwords longer than 16 characters since
-                            // MD5Shadow.crypt() does not appear to work with passwords longer than that.
-                            out[0] = pwd.length() > 16 ? pwd.substring( 0, 16 ) : pwd;
-                            
-                            // Calculate hash of password & salt
-                            out[1] = MD5Shadow.crypt( out[0], user.getSalt() );
-                            
-                            
-                            
-                            return out;
-                        }
+                        String[] out = new String[2];
+                        
+                        // Store password that will be calculated to hash.
+                        // Truncate passwords longer than 16 characters since
+                        // MD5Shadow.crypt() does not appear to work with passwords longer than that.
+                        out[0] = pwd.length() > 16 ? pwd.substring( 0, 16 ) : pwd;
+                        
+                        // Calculate hash of password & salt
+                        out[1] = MD5Shadow.crypt( out[0], user.getSalt() );
+
+                        return out;
                     }
+                }
             );
             
         }
         
-        // Iterate through list of tasks to get "small" chunks of tasks
-        for( int i=0; i < tasks.size(); i += TASK_SIZE ){
+        // Iterate through list of tasks to execute "small" chunks of tasks
+        for( int fromIndex=0; fromIndex < tasks.size(); fromIndex += TASK_SIZE ){
             
-            int toIndex = i + TASK_SIZE - 1;
-            
+            int toIndex, temp = 0;
+            toIndex = (temp = fromIndex + TASK_SIZE - 1) > tasks.size() ? tasks.size() : temp;
+
             // Run "small" chunks of list of tasks
             List<Future<String[]>> results = workers.invokeAll(
-                    tasks.subList( i, toIndex >= tasks.size() ? tasks.size() : toIndex ), 
+                    tasks.subList(fromIndex, toIndex ), 
                     10, TimeUnit.SECONDS
             );
             
@@ -138,11 +172,11 @@ public class Cracker extends Thread{
             for (Future<String[]> f : results) {
                 
                 // Get results from task
-                String[] str = f.get();
+                String[] result = f.get();
                 
-                // Return password if it matches the user's hash
-                if( str[1].equals( user.getHash() ) ){
-                    return user.getUsername() + ":" + str[0];
+                // Return username & password if password matches the user's hash
+                if( result[1].equals( user.getHash() ) ){
+                    return user.getUsername() + ":" + result[0];
                 }
                 
             }
@@ -155,11 +189,21 @@ public class Cracker extends Thread{
     
     public static void main(String[] args) {
         
-        // Read list of common passwords into array of strings.
-        // First argument can be file path to custom password list.
-        // Default password list will be used otherwise.
-        ArrayList<String> pwd_list = FileToArray.toStringArray( args.length == 1 ? args[0] : PWD_DIR );
         
+        // Initialize list of file paths to password lists with default password list.
+        String pwdFileList[] = { PWD_DIR };
+        
+        // Read arguments as file paths to custom password lists that will be 
+        // merged with default password list.
+        if( args.length > 0 ){
+            ArrayList<String> pwdFileArrayList = new ArrayList<>( Arrays.asList(pwdFileList) );
+            pwdFileArrayList.addAll( (new ArrayList<>( Arrays.asList(args)) ) );
+            pwdFileList = pwdFileArrayList.toArray( pwdFileList );
+        }
+        
+        // Read list of common passwords into array of strings.
+        ArrayList<String> pwd_list = FileToArray.toStringArray( pwdFileList ); 
+
         // Read shadow file into array
         ArrayList<Shadow> shadow = FileToArray.toShadowArray( SHADOW_DIR );
         
@@ -184,7 +228,7 @@ public class Cracker extends Thread{
                 Logger.getLogger(Cracker.class.getName()).log(Level.SEVERE, null, ex);
             }
 
-            // Print result
+            // Print password. Null password means no password was found.
             System.out.print( pwd == null ? 
                                 //user.getUsername() + ": Password not found" : 
                                 "" : 
